@@ -122,8 +122,8 @@ parseName :: MonadFail m => Text -> m Name
 parseName text = maybe (fail errorMessage) pure $ mkName text
   where errorMessage = T.unpack text <> " is not valid GraphQL name"
 
-litName :: Text -> Q (TH.TExp Name)
-litName = parseName >=> \name -> [|| name ||]
+litName :: Text -> TH.Code Q Name
+litName t = TH.liftCode (parseName t >>= \name -> TH.examineCode [|| name ||])
 
 instance J.FromJSON Name where
   parseJSON = J.withText "Name" parseName
@@ -507,7 +507,7 @@ data TypeSystemDirectiveLocation
   deriving (Ord, Show, Eq, Lift, Generic)
 instance Hashable TypeSystemDirectiveLocation
 
-liftTypedHashMap :: (Eq k, Hashable k, Lift k, Lift v) => HashMap k v -> Q (TH.TExp (HashMap k v))
+liftTypedHashMap :: (Eq k, Hashable k, Lift k, Lift v, TH.Quote m) => HashMap k v -> TH.Code m (HashMap k v)
 liftTypedHashMap a = [|| M.fromList $$(TH.liftTyped $ M.toList a) ||]
 
 inline :: NoFragments var -> FragmentSpread var
